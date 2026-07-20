@@ -4,16 +4,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { User } from 'generated/prisma/client';
 import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+
 @Injectable()
 export class AuthService {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private jwtService: JwtService,
+  ) {}
 
   async signIn(
     email: string,
     password: string,
-  ): Promise<Omit<User, 'password'>> {
+  ): Promise<{ access_token: string }> {
     const user = await this.userService.user({ email: email });
 
     if (!user) {
@@ -25,9 +29,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _password, ...result } = user;
+    const payload = { sub: user.id };
 
-    return result;
+    return {
+      access_token: await this.jwtService.signAsync(payload),
+    };
   }
 }
